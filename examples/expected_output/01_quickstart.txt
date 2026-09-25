@@ -18,7 +18,7 @@ Logged in
   client code : 00000
   username    : <username>
   email       : <email>
-  account     : ACTIVE
+  account     : BASIC
   can trade   : True
   tax rate    : 0.15
   mobile      : 03XX-XXXXXXX
@@ -46,7 +46,7 @@ What just happened
              "mobileNo":"<encrypted>","cnic":"<encrypted>","ibn_number":"<encrypted>",
              "cnic_expiry":"<DD/MM/YYYY>","trade":true,"submission_complete":true,
              "instantDepositAcc":{...},"cdcRastIban":{...},
-             "tax_rate":0.15,"commission_rate":0.0,"otp_is_verified":1}
+             "tax_rate":0.15,"commission_rate":0.0025,"otp_is_verified":1}
 
    The device_id is 8 random bytes rendered as hex, generated locally on the
    first run. It is what binds a login to a "device" - there is no IMEI or

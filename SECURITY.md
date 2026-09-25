@@ -58,12 +58,6 @@ issue or email the maintainers and it will be taken out.
 * Rotate any password that has ever been pasted into a file, a chat, or a
   commit.
 
-## Scope
-
-This client is for accounts you own. Using it against someone else's account,
-or to place orders without their authorisation, is out of scope for this
-project and is not something the maintainers will assist with.
-
 ## Trading risk
 
 `finqalab.order` sends real orders to the exchange. There is no paper-trading

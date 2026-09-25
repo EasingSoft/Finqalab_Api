@@ -19,11 +19,12 @@ Run:
 import getpass
 import os
 import sys
+from typing import Tuple
 
 from finqalab import FinqalabClient, LoginRequired, order, portfolio
 
 
-def get_credentials() -> tuple:
+def get_credentials() -> Tuple[str, str]:
     user_id = os.environ.get("FQ_USER_ID")
     password = os.environ.get("FQ_PASSWORD")
     if not user_id or not password:
@@ -41,6 +42,13 @@ def get_credentials() -> tuple:
     return user_id, password
 
 
+def is_cash_row(row) -> bool:
+    """The money row is a holding like any other - exclude it from stock value."""
+    if "cashBalance" in row.raw or "CashBalance" in row.raw:
+        return True
+    return "Money" in str(row.security or "")
+
+
 def show_portfolio(code: str, nostr: str) -> None:
     print("=" * 74)
     print("PORTFOLIO  (STOMP order-service/portfolio)")
@@ -51,11 +59,15 @@ def show_portfolio(code: str, nostr: str) -> None:
         return
 
     print(f"{'security':<24}{'qty':>10}{'avg cost':>13}{'last':>12}{'value':>16}")
-    total = 0.0
+    stock_value = 0.0
+    cash = 0.0
     for row in rows:
         value = row.current_value
         if isinstance(value, (int, float)):
-            total += value
+            if is_cash_row(row):
+                cash += value
+            else:
+                stock_value += value
         print(
             f"{(row.security or '')[:22]:<24}"
             f"{str(row.quantity or ''):>10}"
@@ -64,7 +76,11 @@ def show_portfolio(code: str, nostr: str) -> None:
             f"{str(value or ''):>16}"
         )
 
-    print(f"{'':>75}\n{'sum of current value':<64}{total:>10,.2f}")
+    print()
+    print(f"{'stock value (cash row excluded)':<64}{stock_value:>10,.2f}")
+    print(f"{'cash (the money row)':<64}{cash:>10,.2f}")
+    print(f"{'total':<64}{stock_value + cash:>10,.2f}")
+
     print("\nThe row whose security contains 'Money' is your cash balance:")
     print(" ", portfolio.cash_balance(code, nostr))
 

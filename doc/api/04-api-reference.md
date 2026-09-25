@@ -90,9 +90,11 @@ Not enforced by the server. `verify_version(app_build=170)`.
 | `207` | `{"msg":"Unauthorized"}` | New device, OTP emailed — raises `LoginRequired` |
 | `200` | full profile + `token` | Logged in; `client.profile` is populated |
 
-Profile fields: `id`, `username`, `email`, `account_status`, `cnic_status`,
-`cnic_expiry`, `tax_charged`, `commission_charged`, `isMultidayToggle`, and the
-encrypted `trading_pin_code`, `mobileNo`, `cnic`, `ibn_number`.
+The 200 body is the full profile — all 33 captured keys are listed in
+`03-auth-and-tokens.md`. The ones worth naming here: `id`, `token`, `trade`,
+`account_status` (tier, e.g. `BASIC`), `tax_rate`, `commission_rate`,
+`otp_is_verified`, `hasPendingIBFTRequest`, `hasPendingWithdrawalRequest`, and
+the AES-encrypted `trading_pin_code`, `mobileNo`, `cnic`, `ibn_number`.
 
 ### `POST /v1/verifyDeviceVerificationOTP`
 

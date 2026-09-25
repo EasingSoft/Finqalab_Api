@@ -18,8 +18,10 @@ OGDC                      200       298.15      319.46    63,892.00
 HBL                       100       152.20      140.85    14,085.00
 LUCK                       25       980.00    1,044.20    26,105.00
 Money Market Fund        500       100.00      100.00    50,000.00
-                                                          -----------
-sum of current value                                 160,932.00
+
+stock value (cash row excluded)                       110,932.00
+cash (the money row)                                   50,000.00
+total                                                  160,932.00
 
 The row whose security contains 'Money' is your cash balance: 50000
 
@@ -39,8 +41,9 @@ Field notes
 * limitWithdrawal   amount you may still withdraw
 * raw          the untouched response row
 
-The response is a bare JSON array, not an {"data": ...} envelope. Exclude the
-cash row when summing stock value.
+The response is a bare JSON array, not an {"data": ...} envelope. The cash row
+is a holding like any other, so exclude it before summing stock value - that is
+what the three totals above do.
 
 ==========================================================================
 ORDER LIST  (STOMP order-service/order-list)

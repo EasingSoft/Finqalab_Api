@@ -63,26 +63,62 @@ raises `LoginRequired` on 207.
 
 **Known device — HTTP 200**
 
+The full profile comes back. This is every key the capture recorded (33 of
+them), with the real values replaced:
+
 ```json
 {
   "id": "00000",
-  "username": "user00000",
-  "email": "you@example.com",
-  "account_status": "Active",
-  "cnic_status": 1,
-  "cnic_expiry": "<DD/MM/YYYY>",
+  "token": "<JWT>",
+  "timestamp": "2026-08-13T17:43:24.946Z",
+  "trade": true,
+  "submission_complete": true,
+  "username": "<username>",
+  "email": "<email>",
+  "clientName": "<name>",
+  "trading_pin_code": "<encrypted>",
   "mobileNo": "<encrypted>",
   "cnic": "<encrypted>",
   "ibn_number": "<encrypted>",
-  "trading_pin_code": "<encrypted>",
-  "tax_charged": 0.05,
-  "commission_charged": 0.005,
-  "isMultidayToggle": true,
-  "token": "<JWT>"
+  "cnic_expiry": "<DD/MM/YYYY>",
+  "hasPendingIBFTRequest": false,
+  "hasPendingWithdrawalRequest": false,
+  "instantDepositAcc": {"acct_no": "<number>", "iban_code": "<PK..>", "acct_desc": "..."},
+  "cdcRastIban": {"iban": "<PK..>", "bank_name": "..."},
+  "isRating": 0,
+  "isFeedback": 0,
+  "feedFormURL": "",
+  "limit_percent_change": 10,
+  "otp_is_verified": 1,
+  "isBankTransfer": false,
+  "isPayFast": false,
+  "isRda": false,
+  "tax_rate": 0.15,
+  "commission_rate": 0.0025,
+  "settlement_day": "You can withdraw settled funds only. ...",
+  "account_status": "BASIC",
+  "isPremiumStarted": false,
+  "isPremiumEnded": false,
+  "psx_media_url": "https://dps.psx.com.pk/download",
+  "showSurvey": false
 }
 ```
 
 The whole payload is stored on `client.profile`. The `token` field is the JWT.
+
+Worth knowing about these fields:
+
+- `account_status` is an **account tier**, not a health flag. The captured
+  value was `BASIC`. It is not `"Active"` and it does not gate trading.
+- `trade` is the flag that actually matters — it gates order placement.
+- `tax_rate` and `commission_rate` are **fractions**, not percentages
+  (`0.15` = 15%). `commission_rate` was `0.0025`, i.e. 0.25%.
+- `hasPendingIBFTRequest` and `hasPendingWithdrawalRequest` are the cheapest
+  way to find out whether a withdrawal is still in flight.
+- `settlement_day` is a human-readable sentence, not a date.
+
+`isMultidayToggle` is **not** in this response. It is the sole field of
+`GET /v1/multiday-toggle` — see `client.multiday_toggle()`.
 
 ### Step 3 — the email OTP (only on 207)
 
