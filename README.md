@@ -30,9 +30,9 @@ Requires Python 3.9+. Dependencies: `requests`, `pycryptodome`, `websockets`.
 
 ## Configure
 
-```bash
-export FQ_USER_ID=00000          # your Finqalab client code
-export FQ_PASSWORD='your-password'
+```cmd
+setx FQ_USER_ID "00000"
+setx FQ_PASSWORD "your-password"
 ```
 
 | Variable | Required | Default | Meaning |
@@ -46,9 +46,15 @@ Never hardcode these in a file that gets committed.
 ## 60-second quickstart
 
 ```python
+import os
 from finqalab import FinqalabClient, LoginRequired, decrypt_text
 
-client = FinqalabClient(user_id="00000", password="your-password")
+user_id = os.environ.get("FQ_USER_ID")
+password = os.environ.get("FQ_PASSWORD")
+if not user_id or not password:
+    raise SystemExit("Set FQ_USER_ID and FQ_PASSWORD first.")
+
+client = FinqalabClient(user_id=user_id, password=password)
 
 try:
     client.login()
