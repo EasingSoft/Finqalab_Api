@@ -1,0 +1,146 @@
+Expected output for examples/03_portfolio_and_orders.py
+======================================================
+
+Field names, wire format and frame text below are exact. Holdings, order
+numbers and order values are illustrative placeholders - no position, order or
+balance from a real account appears here.
+
+$ export FQ_USER_ID=00000
+$ export FQ_PASSWORD='your-password'
+$ python examples/03_portfolio_and_orders.py
+
+==========================================================================
+PORTFOLIO  (STOMP order-service/portfolio)
+==========================================================================
+security                 qty     avg cost        last        value
+FCEPL                      50       128.40      137.00     6,850.00
+OGDC                      200       298.15      319.46    63,892.00
+HBL                       100       152.20      140.85    14,085.00
+LUCK                       25       980.00    1,044.20    26,105.00
+Money Market Fund        500       100.00      100.00    50,000.00
+                                                          -----------
+sum of current value                                 160,932.00
+
+The row whose security contains 'Money' is your cash balance: 50000
+
+Field notes
+-----------
+* security     instrument name, or the cash row
+* quantity     held units
+* totalCost    quantity x costPerUnit
+* costPerUnit  average purchase price
+* currentPrice last traded price
+* currentValue quantity x currentPrice
+* capGainLoss  unrealised P&L
+* retOfInv     return on investment, percent
+* pfWeight     portfolio weight percentage
+* cashBalance / cashUnblocked / cashBlocked   on the cash row
+* grandTotal   portfolio value including cash
+* limitWithdrawal   amount you may still withdraw
+* raw          the untouched response row
+
+The response is a bare JSON array, not an {"data": ...} envelope. Exclude the
+cash row when summing stock value.
+
+==========================================================================
+ORDER LIST  (STOMP order-service/order-list)
+==========================================================================
+order no       symbol     side     qty     price  status       time
+00000000       FCEPL      Sell        1    137.00  VLD          10:49:35
+00000000       OGDC       Buy       200    298.15  ACK          09:58:02
+00000000       HBL        Buy         5    140.50  FILLED       09:32:18
+
+Order fields: orderNumber symbol side volume price orderNature orderSpecial
+orderStatus marketType orderDateTime valid_till afterHourOrder raw
+
+Status codes seen in practice: VLD (validated), ACK (acknowledged), FILLED,
+PART (partial), CAN (cancelled), REJ (rejected). VLD is NOT a fill - it means
+the exchange accepted the order. marketType is REG for the regular board, ODD
+for odd-lot, AH for after-hours. afterHourOrder is 0/1.
+
+fromDate / toDate in the order-list request are HH:MM bounds, defaulting to
+now, which is why the list covers today only.
+
+To place an order:
+  python examples/03_portfolio_and_orders.py --place OGDC 1 137.50
+
+==========================================================================
+PLACE ORDER  (STOMP order-service)
+==========================================================================
+  BUY 1 OGDC @ 137.5
+
+  This sends a REAL order to the exchange. Type 'yes' to proceed: yes
+
+  Buy 1 OGDC @ 137.5 [VLD] #<order-no> - Order validated
+
+  accepted, order no: <order-no>
+
+What the socket actually sends and receives
+-------------------------------------------
+Everything is STOMP 1.2 wrapped in a SockJS JSON array, so each frame is a
+string inside ["..."] with real newlines and a trailing NUL.
+
+  C->S  CONNECT
+        id:<client_code>
+        nostr:<password-in-plaintext>
+        accept-version:1.0,1.1,1.2
+        heart-beat:5000,5000
+
+  S->C  CONNECTED
+        version:1.2
+        heart-beat:0,0
+        user-name:<client_code>
+
+  C->S  SUBSCRIBE
+        destination:/user/<client_code>/order-service.notify
+        id:sub-2
+
+  C->S  SEND
+        destination:/app/order-service.<client_code>
+        content-length:260
+
+        {"actionType":"neworder","clientCode":"<client_code>","discVolume":0,
+         "orderProperty":111,"orderType":"140","orignateSource":"W",
+         "price":137.5,"refno":"0","side":"Buy","subClientCode":"",
+         "symbol":"OGDC","triggerPrice":0,"userId":"<client_code>",
+         "volume":1,"marketType":"REG"}
+
+  S->C  MESSAGE
+        destination:/user/<client_code>/order-service.notify
+        content-type:application/json
+        content-length:321
+
+        {"userId":"<client_code>","orderNo":"<order-no>","symbol":"OGDC",
+         "side":"Buy","price":137.5,"quantity":1,"status":"VLD",
+         "message":"Order validated","action":"Buy","time":"11:02:47"}
+
+Note the SUBSCRIBE comes before the SEND. The server can push the confirmation
+before your SEND returns, and a late subscribe misses it entirely.
+
+The server also sends a bare "h" heartbeat roughly every 25 seconds, and "o"
+once when the SockJS session opens. The client skips both.
+
+Order type and market codes
+---------------------------
+  orderType  140 LIMIT   141 MARKET   142 STOP   143 STOP_LIMIT
+  marketType REG regular board, ODD odd-lot, AH after-hours
+  orderProperty  111 (normal)
+
+Notes
+-----
+* The socket needs the password in the clear - STOMP does not use the AES
+  scheme. Over wss:// that is protected by TLS only.
+* portfolio() and order_list() each open their own short-lived connection.
+  The app batches them on one socket; _subscribe_and_send() exists if you
+  want to do the same.
+* After placing, order.place_and_wait() polls the order list until your order
+  number shows up.
+* OrderResult.success is True for VLD and ACK, which means accepted - not
+  filled. Poll order_status for FILLED.
+* A TIMEOUT error is ambiguous: the order may still have gone through. Check
+  the order list before retrying, or you will double your position.
+* modify() and cancel() are reconstructed, not observed on the wire. For a live
+  account, cancel in the app and place a new order. See
+  doc/reverse/04-findings-and-decisions.md.
+* This example is read-only unless you pass --place, and even then it asks
+  for confirmation first.

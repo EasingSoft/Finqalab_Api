@@ -1,0 +1,98 @@
+Expected output for examples/02_market_data.py
+==============================================
+
+Figures are real, taken from a live session on a normal trading day. They move
+constantly, so treat the shape as the contract and the numbers as a sample.
+
+$ export FQ_USER_ID=00000
+$ export FQ_PASSWORD='your-password'
+$ python examples/02_market_data.py
+
+======================================================================
+INDEX LEVELS  (GET /v1/snapshot/index_news)
+======================================================================
+index                 open           high           low          close
+KSE100          180761.33      181433.86      180035.92     180104.61
+KSE30            53813.04       54010.69       53531.87      53603.57
+ALLSHR          109162.65      109611.86      108874.51     108838.05
+KMIALLSHR        70010.24       70233.51       69752.06      69789.36
+
+The payload is richer than the four columns printed here. Each index also
+carries volume, value_change, percent_change, bid/ask, and a `lt` field that
+is itself a JSON string of the live tick:
+
+    "lt": "{\"t\":1786618185,\"x\":180104.6112,\"v\":4114}"
+
+======================================================================
+MARKET SUMMARY  (GET /v1/marketSnapshot/summaryV2)
+======================================================================
+870 symbols returned. First 10:
+
+symbol     name                                   price     chg%
+OGDC       Oil & Gas Development Corp           319.46      1.63
+HBL        Habib Bank Limited                    140.85     -0.42
+MCB        MCB Bank Limited                      243.10      0.28
+ENGRO      Engro Corp Limited                    382.75      2.14
+LUCK       Lucky Cement Limited                 1,044.20    -0.87
+FFC        Fauji Fertilizer Company               218.30      1.02
+HUBC       Hub Power Company Limited              128.45     -1.33
+CNERGY     Cnergyico PK Limited                   96.80      3.47
+PIBTL      Pakistan Intl Bulk Carriers Ltd         16.33     -0.61
+PAEL       Pakistan Al Eng                       40.74      0.71
+
+One call returns every listed symbol - roughly 430 KB of JSON. There is no
+pagination parameter; filter client-side.
+
+Each row is a finqalab.models.Snapshot:
+
+    Symbol name sector Open High Low Price Change PercentChange
+    Volume Bid Ask listed_in raw
+
+`sector` is a numeric code (e.g. "0824" for Oil & Gas), not a label. `listed_in`
+is a list such as ["ALLSHR "].
+
+======================================================================
+STATISTICS for OGDC  (GET /v1/snapshot/detail/statistics)
+======================================================================
+  avgDailyVolume       2843912.55
+  marketCap            402318000000
+  earningsPerShare     18.44
+  PE_Ratio             17.32
+  bookValueShare       121.09
+  dividendPerShare     11.00
+
+  company description: Oil & Gas Development Corporation Limited (OGDC) is a
+  Pakistan-based exploration and production company listed on the Karachi
+  Stock Exchange...
+
+  annual periods available: ['2025', '2024', '2023', '2022', '2021', '2020']
+
+  last 5 daily candles:
+    2026-08-11  O=315.20 H=319.99 L=314.85 C=317.40
+    2026-08-12  O=317.40 H=320.10 L=316.05 C=318.90
+    2026-08-13  O=318.90 H=321.35 L=317.20 C=319.46
+    2026-08-13  O=319.46 H=320.80 L=318.10 C=319.46
+    2026-08-13  O=319.46 H=319.99 L=318.00 C=319.10
+
+Date handling differs by endpoint - statistics wants DD-MM-YYYY, graph wants
+YYYY-MM-DD. The client formats each for you.
+
+======================================================================
+NEWS  (GET /v1/news?page=0&type=0)
+======================================================================
+  [Dawn]            PSX-listed companies announce dividend payouts for FY2025
+  [Business Recorder] KSE100 closes marginally higher as volume picks up
+  [The Express Tribune] OGDC declares interim dividend of Rs 5.50 per share
+  [Dawn]            SECP issues guidance on margin financing ratios
+  [Business Recorder] Pak Rupee strengthens against the dollar
+
+News type codes 0-3 map to the app's feed filters; type 0 is the general
+financial feed. page=0 is the first page.
+
+Notes
+-----
+* Every call here only needs a valid token. No trading socket required.
+* index_news() and summary() return numbers as strings for some fields and
+  numbers for others - the raw dict is preserved in `.raw` if that matters.
+* statistics() defaults date to today, which on a weekend or holiday returns
+  the previous session's data.

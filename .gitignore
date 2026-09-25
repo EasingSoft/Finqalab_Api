@@ -1,0 +1,42 @@
+# Byte-compiled
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+
+# Cached auth token written by finqalab.utils.TokenStore
+.finqalab_token
+
+# Raw capture artefacts and binaries - never commit these.
+# They contain live credentials (JWT, CNIC, mobile, IBAN, plaintext password)
+# and are Next Capital / U2 Ventures intellectual property.
+*.db
+*.apk
+*.pptx
+*.aab
+*.so
+*.mitm
+*.jpeg
+*.jpg
+*.png
+*.webp
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.idea/
+.vscode/

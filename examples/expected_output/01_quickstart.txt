@@ -1,0 +1,93 @@
+Expected output for examples/01_quickstart.py
+==============================================
+
+Field names, wire format and response shapes below are exact. Identifying
+values - client code, username, email, mobile, CNIC expiry, encrypted fields -
+are replaced with placeholders. Nothing here can be used to reach an account.
+
+$ export FQ_USER_ID=00000
+$ export FQ_PASSWORD='your-password'
+$ python examples/01_quickstart.py
+
+> verifying app version
+   {'status': 1, 'message': True}
+> logging in
+   token stored at ~/.finqalab_token
+
+Logged in
+  client code : 00000
+  username    : <username>
+  email       : <email>
+  account     : ACTIVE
+  can trade   : True
+  tax rate    : 0.15
+  mobile      : 03XX-XXXXXXX
+
+Verified via GET /v1/userDetailV2
+  status      : Success
+  otp verified: 1
+
+Next: 02_market_data.py
+
+-----
+What just happened
+------------------
+
+1. POST /v1/appVersion/verify-version   form body "app_build=170"
+   -> {"status":1,"message":true}
+   The server does not currently enforce this value, so it rarely matters.
+   Override it with FQ_APP_BUILD if you need to match a different build.
+
+2. POST /v1/loginV3
+   request  {"id":"00000","password":"<AES ciphertext>","device_token":"",
+             "device_id":"<16 hex chars>","os":"Android"}
+   response 200 {"id":"00000","token":"<JWT>","username":"<username>",
+             "email":"<email>","trading_pin_code":"<encrypted>","clientName":"...",
+             "mobileNo":"<encrypted>","cnic":"<encrypted>","ibn_number":"<encrypted>",
+             "cnic_expiry":"<DD/MM/YYYY>","trade":true,"submission_complete":true,
+             "instantDepositAcc":{...},"cdcRastIban":{...},
+             "tax_rate":0.15,"commission_rate":0.0,"otp_is_verified":1}
+
+   The device_id is 8 random bytes rendered as hex, generated locally on the
+   first run. It is what binds a login to a "device" - there is no IMEI or
+   Android ID anywhere in the request.
+
+3. The token is a standard HS256 JWT, 28-day lifetime:
+
+     header   {"alg":"HS256","typ":"JWT"}
+     payload  {"id":"00000","user_id":"00000","iat":...,"exp":...,
+               "iss":"<issuer>","sub":"<subject>"}
+     signature <server HMAC - not verifiable by the client>
+
+4. Subsequent calls send it two ways:
+     x-auth-token: <JWT>
+     cookie: xauth=<JWT>
+
+5. NEW DEVICE BRANCH - instead of step 2 returning 200, the first login from an
+   unfamiliar device_id returns HTTP 207 and no token:
+
+     POST /v1/loginV3   ->  207  {"msg":"Unauthorized"}
+
+   and an OTP is emailed to the registered address. Submit it, then log in
+   again:
+
+     POST /v1/verifyDeviceVerificationOTP
+     request  {"user_id":"00000","otp":"Ab3xY9","device_id":"<device_id>"}
+     response 200  {"status":1,"msg":"OTP verified successfully"}
+
+   The OTP is mixed-case alphanumeric. Once verified, that device_id is
+   remembered and later logins go straight to 200.
+
+Notes
+-----
+* The script reuses the saved token in ~/.finqalab_token on the next run, so
+  you only handle the OTP once per machine.
+* trading_pin_code, mobileNo, cnic and ibn_number arrive AES-encrypted. The
+  script decrypts mobile with finqalab.decrypt_text() to show it works.
+* The AES key and IV are published in src/finqalab/encryption.py. That makes the
+  scheme reproducible, not secure - see SECURITY.md. TLS is the only thing
+  protecting the password in transit.
+* Your trading PIN is separate from your login password and is never sent by
+  this script.
+* Delete the cached token when you are done:
+      python -c "from finqalab import FinqalabClient; FinqalabClient().clear_token()"
